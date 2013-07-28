@@ -23,7 +23,7 @@ import (
 	"runtime"
 )
 
-import "sourcefire/clamav"
+import "github.com/mirtchovski/clamav"
 
 var debug = flag.Bool("debug", false, "enable debugging output")
 var clamavdebug = flag.Bool("clamavdebug", false, "enable debugging output from the ClamAV engine")
