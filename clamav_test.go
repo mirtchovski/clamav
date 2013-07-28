@@ -368,8 +368,6 @@ func testInitAll() (*Engine, error) {
 }
 
 func TestScan(t *testing.T) {
-	var errors []string // useful when only partial errors occur and we want to show them all
-
 	eng, err := testInitAll()
 	if err != nil {
 		t.Fatalf("testInitAll: %v")
@@ -379,21 +377,17 @@ func TestScan(t *testing.T) {
 	found := false
 	for _, v := range scanFiles {
 		virus, scan, err := eng.ScanFile(v.dir+"/"+v.file, ScanStdopt)
-		if virus != v.name {
-			errors = append(errors, fmt.Sprintf("ScanFile: %s/%s virus = %s (want %s); scanned: %d %v", v.dir, v.file, virus, v.name, scan, err))
-			/*Do not do this test, results seem to be inconsistent
-			*	} else if scan != v.scan {
-			*		t.Errorf("ScanFile: %s/%s bytes scanned = %d (want %d); %v", v.dir, v.file, scan, v.scan, err)
-			 */
-		} else {
-			found = true
+		if err != nil {
+			if virus != "" {
+				if virus != v.name {
+					t.Errorf("ScanFile: %s/%s virus = %s (want %s); scanned: %d %v", v.dir, v.file, virus, v.name, scan, err)
+				}
+				found = true
+			}
 		}
 	}
 	if !found {
-		t.Fatal("no virus files found. if you want to run scan tests please copy the files from ClamAV's test/ directory into testdata/")
-	}
-	for _, v := range errors {
-		t.Errorf("%s", v)
+		fmt.Printf("No virus files found. Please copy the files from ClamAV's test/ directory into testdata/")
 	}
 }
 
