@@ -32,13 +32,31 @@ var workers = flag.Int("workers", 8, "number of scanning workers")
 var cpus = flag.Int("cpus", 2, "number of active OS threads")
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: %s [-d] path [...]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "usage: %s path [...]\n", os.Args[0])
 	flag.PrintDefaults()
 	os.Exit(1)
 }
 
+// A counter goroutine sits between the walker and the workers and keeps track 
+// of the walker's progress.
+func counter(cnt, out chan string) {
+	c := uint64(0)
+	for path := range cnt {
+		if *debug {
+			log.Printf("counter %s", c)
+		}
+		c++
+		if c %1000 == 0 {
+			log.Printf("scanned %d so far, now scanning %s", c, path)
+		}
+		out <- path
+	}
+	log.Printf("total scanned: %d", c)
+	close(out)
+}
+
 // Workers receive file names on 'in', scan them, and output the results on 'out'
-func worker(in, out chan string, done chan bool, engine *clamav.Engine) {
+func worker(in, cnt chan string, done chan bool, engine *clamav.Engine) {
 	for path := range in {
 		if *debug {
 			log.Printf("scanning %s", path)
@@ -124,6 +142,7 @@ func main() {
 	}
 
 	in := make(chan string, 1024)
+	cnt := make(chan string, 1024)
 	out := make(chan string, 1024)
 	done := make(chan bool, *workers)
 
@@ -134,8 +153,10 @@ func main() {
 	}
 
 	for i := 0; i < *workers; i++ {
-		go worker(in, out, done, engine)
+		go worker(cnt, out, done, engine)
 	}
+
+	go counter(in, cnt)
 
 	for _, v := range args {
 		walker(v, in)
