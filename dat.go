@@ -20,42 +20,42 @@ type ErrorCode C.cl_error_t
 const CountPrecision = C.CL_COUNT_PRECISION
 
 // return codes
-const Clean = C.CL_SUCCESS
 const (
-	Success   ErrorCode = C.CL_SUCCESS
-	Virus               = C.CL_VIRUS
-	Enullarg            = C.CL_ENULLARG
-	Earg                = C.CL_EARG
-	Emalfdb             = C.CL_EMALFDB
-	Ecvd                = C.CL_ECVD
-	Everify             = C.CL_EVERIFY
-	Eunpack             = C.CL_EUNPACK
-	Eopen               = C.CL_EOPEN // IO and memory errors below
-	Ecreat              = C.CL_ECREAT
-	Eunlink             = C.CL_EUNLINK
-	Estat               = C.CL_ESTAT
-	Eread               = C.CL_EREAD
-	Eseek               = C.CL_ESEEK
-	Ewrite              = C.CL_EWRITE
-	Edup                = C.CL_EDUP
-	Eacces              = C.CL_EACCES
-	Etmpfile            = C.CL_ETMPFILE
-	Etmpdir             = C.CL_ETMPDIR
-	Emap                = C.CL_EMAP
-	Emem                = C.CL_EMEM
-	Etimeout            = C.CL_ETIMEOUT
-	Break               = C.CL_BREAK // internal (not reported outside libclamav)
-	Emaxrec             = C.CL_EMAXREC
-	Emaxsize            = C.CL_EMAXSIZE
-	Emaxfiles           = C.CL_EMAXFILES
-	Eformat             = C.CL_EFORMAT
-	//	Eparse                      = C.CL_EPARSE	// 0.98 adds this
-	Ebytecode         = C.CL_EBYTECODE
-	EbytecodeTestfail = C.CL_EBYTECODE_TESTFAIL
-	Elock             = C.CL_ELOCK // c4w error codes
-	Ebusy             = C.CL_EBUSY
-	Estate            = C.CL_ESTATE
-	ELast             = C.CL_ELAST_ERROR // no error codes below this line please
+	Success           ErrorCode = C.CL_SUCCESS
+	Clean                       = C.CL_CLEAN
+	Virus                       = C.CL_VIRUS
+	Enullarg                    = C.CL_ENULLARG
+	Earg                        = C.CL_EARG
+	Emalfdb                     = C.CL_EMALFDB
+	Ecvd                        = C.CL_ECVD
+	Everify                     = C.CL_EVERIFY
+	Eunpack                     = C.CL_EUNPACK
+	Eopen                       = C.CL_EOPEN // IO and memory errors below
+	Ecreat                      = C.CL_ECREAT
+	Eunlink                     = C.CL_EUNLINK
+	Estat                       = C.CL_ESTAT
+	Eread                       = C.CL_EREAD
+	Eseek                       = C.CL_ESEEK
+	Ewrite                      = C.CL_EWRITE
+	Edup                        = C.CL_EDUP
+	Eacces                      = C.CL_EACCES
+	Etmpfile                    = C.CL_ETMPFILE
+	Etmpdir                     = C.CL_ETMPDIR
+	Emap                        = C.CL_EMAP
+	Emem                        = C.CL_EMEM
+	Etimeout                    = C.CL_ETIMEOUT
+	Break                       = C.CL_BREAK // internal (not reported outside libclamav)
+	Emaxrec                     = C.CL_EMAXREC
+	Emaxsize                    = C.CL_EMAXSIZE
+	Emaxfiles                   = C.CL_EMAXFILES
+	Eformat                     = C.CL_EFORMAT
+	Eparse                      = C.CL_EPARSE
+	Ebytecode                   = C.CL_EBYTECODE
+	EbytecodeTestfail           = C.CL_EBYTECODE_TESTFAIL
+	Elock                       = C.CL_ELOCK // c4w error codes
+	Ebusy                       = C.CL_EBUSY
+	Estate                      = C.CL_ESTATE
+	ELast                       = C.CL_ELAST_ERROR // no error codes below this line please
 )
 
 type EngineField C.enum_cl_engine_field
@@ -144,11 +144,13 @@ const (
 	ScanHeuristicPrecedence   = 0x80000
 	ScanBlockmacros           = 0x100000
 	ScanAllmatches            = 0x200000
+	ScanSwf                   = 0x400000
+	ScanPartitionIntxn        = 0x800000
 
-	ScanInternalCollectSHA = 0x80000000 // Enables hash output in sha-collect builds - for internal use only
+	ScanCollectPerformanceInfo = 0x40000000
 
 	// recommended scan settings
-	ScanStdopt = (ScanArchive | ScanMail | ScanOle2 | ScanPdf | ScanHtml | ScanPe | ScanAlgorithmic | ScanElf)
+	ScanStdopt = (ScanArchive | ScanMail | ScanOle2 | ScanPdf | ScanHtml | ScanPe | ScanAlgorithmic | ScanElf | ScanSwf)
 )
 
 // cl_countsigs options
@@ -158,7 +160,143 @@ const (
 	CountSigsAll = (CountSigsOfficial | CountSigsUnofficial)
 )
 
+const (
+	// engine options
+	EngineOptionsNone = iota
+	EngineOptionsDisableCache
+	EngineOptionsForceToDisk
+	EngineOptionsDisablePEStats
+)
+
+const (
+	// engine fields
+	MaxScansize           = iota // uint64
+	MaxFilesize                  // uint64
+	MaxRecursion                 // uint32
+	MaxFiles                     // uint32
+	MinCCCount                   // uint32
+	MinSSNCount                  // uint32
+	PuaCategories                // string
+	DbOptions                    // uint32
+	DbVersion                    // uint32
+	DbTime                       // time
+	AcOnly                       // uint32
+	AcMindepth                   // uint32
+	AcMaxdepth                   // uint32
+	Tmpdir                       // string
+	Keeptmp                      // uint32
+	BytecodeSecurityField        // uint32
+	BytecodeTimeout              // uint32
+	BytecodeModeField            // uint32
+	MaxEmbeddedpe                // uint64
+	MaxHtmlnormalize             // uint64
+	MaxHtmlnotags                // uint64
+	MaxScriptnormalize           // uint64
+	MaxZiptypercg                // uint64
+	Forcetodisk                  // uint32
+	DisableCache                 // uint32
+	DisablePEStats               // uint32
+	StatsTimeout                 // uint32
+	MaxPartitions                // uint32
+	MaxIconspe                   // uint32
+
+)
+
 type Stat C.struct_cl_stat
 type Cvd C.struct_cl_cvd
+type Fmap C.cl_fmap_t
 
 const InitDefault = 0
+
+// CallbackPreCache is called for each processed file (both the entry level - AKA 'outer' - file and
+// inner files - those generated when processing archive and container files), before
+// the actual scanning takes place.
+//
+// Input:
+// fd      = File descriptor which is about to be scanned
+// type    = File type detected via magic - i.e. NOT on the fly - (e.g. "CL_TYPE_MSEXE")
+// context = Opaque application provided data
+//
+// Output:
+// Clean = File is scanned
+// Break = Whitelisted by callback - file is skipped and marked as Clean
+// Virus = Blacklisted by callback - file is skipped and marked as Virus
+type CallbackPreCache func(fd int, ftype string, context *interface{}) ErrorCode
+
+// CallbackPreScan is called for each NEW file (inner and outer) before the scanning takes place. This is
+// roughly the the same as CallbackPreCache, but it is affected by clean file caching.
+// This means that it won't be called if a clean cached file (inner or outer) is
+// scanned a second time.
+//
+// Input:
+// fd      = File descriptor which is about to be scanned
+// type    = File type detected via magic - i.e. NOT on the fly - (e.g. "CL_TYPE_MSEXE")
+// context = Opaque application provided data
+//
+// Output:
+// Clean = File is scanned
+// Break = Whitelisted by callback - file is skipped and marked as Clean
+// Virus = Blacklisted by callback - file is skipped and marked as Virus
+type CallbackPreScan func(fd int, ftype string, context *interface{}) ErrorCode
+
+// CallbackPostScan is called for each processed file (inner and outer), after the scanning is complete.
+//
+// Input:
+// fd      = File descriptor which is was scanned
+// result  = The scan result for the file
+// virname = Virus name if infected
+// context = Opaque application provided data
+//
+// Output:
+// Clean = Scan result is not overridden
+// Break = Whitelisted by callback - scan result is set to Clean
+// Virus = Blacklisted by callback - scan result is set to Virus
+type CallbackPostScan func(fd int, result ErrorCode, virname string, context *interface{}) ErrorCode
+
+// CallbackSigLoad is called whenever a new signature has been loaded
+//
+// The function signature is:
+// type = The signature type (e.g. "db", "ndb", "mdb", etc.)
+// name = The virus name
+// custom = The signature is official (custom == 0) or custom (custom != 0)
+// context = Opaque application provided data
+//
+// Output:
+// 0     = Load the current signature
+// Non 0 = Skip the current signature
+//
+// WARNING: Some signatures (notably ldb, cbc) can be dependent upon other signatures.
+//          Failure to preserve dependency chains will result in database loading failure.
+//          It is the implementor's responsibility to guarantee consistency.
+// type CallbackSigLoad C.clcb_sigload
+
+// Message severity for CallbackMsg
+type Msg C.enum_cl_msg
+
+const (
+	MsgInfoVerbose Msg = C.CL_MSG_INFO_VERBOSE
+	MsgWarn            = C.CL_MSG_WARN
+	NsgError           = C.CL_MSG_ERROR
+)
+
+// CallbackMsg, if set, will be called instead of logging to stderr.
+// Messages of lower severity than specified are logged as usual.
+// This must be called before going multithreaded.
+// Callable before cl_init, if you want to log messages from cl_init() itself.
+//
+// You can use context of cl_scandesc_callback to convey more information to the callback (such as the filename!)
+// Note: setting a 2nd callbacks overwrites previous, multiple callbacks are not
+// supported
+type CallbackMsg func(m Msg, full, msg string, context *interface{})
+
+// CallbackHash is a callback that provides hash statistics for a particular file
+type CallbackHash func(fd int, size uint64, md5 []byte, virusName string, context *interface{})
+
+// CallbackPread is a callback that will be called by ClamAV to fill in part of an object represented by an fmap handle (file in memory, memory location, etc)
+type CallbackPread func(handle *interface{}, buf []byte, offset int64) int64
+
+// CallbackMeta is an archive member metadata callback. Return Virus to blacklist,
+// Clean to continue scanning
+//
+// NB: not exported in libclamav...
+//type CallbackMeta func(containerType string, containerSize uint64, filename string, realSize uint64, encrypted bool, containerFilepos uint64, context interface{})

@@ -15,25 +15,35 @@ import "C"
 
 import (
 	"fmt"
-	"os"
+	"sync"
 	"unsafe"
 )
 
-func init() {
-	err := Init()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-	}
-	return
+var initOnce sync.Once
+
+// Init initializes the ClamAV library. A suitable initialization can be
+// achieved by passing clamav.InitDefault to this function.
+func Init(flags uint) error {
+	var onceerr error
+	initOnce.Do(func() {
+		err := ErrorCode(C.cl_init(C.uint(flags)))
+		if err != Success {
+			onceerr = fmt.Errorf("Init: %v", StrError(err))
+			return
+		}
+		InitCrypto()
+	})
+	return onceerr
 }
 
-// Init initializes the ClamAV library
-func Init() error {
-	err := ErrorCode(C.cl_init(C.uint(InitDefault)))
-	if err != Success {
-		return fmt.Errorf("Init: %v", StrError(err))
-	}
-	return nil
+// InitCrypto initializes the crypto subsystem
+func InitCrypto() {
+	C.cl_initialize_crypto()
+}
+
+// DeinitCrypto cleans up the crypto subsystem prior to program exit
+func DeinitCrypto() {
+	C.cl_cleanup_crypto()
 }
 
 // New allocates a new ClamAV engine.
@@ -166,6 +176,30 @@ func (e *Engine) ScanFile(path string, opts uint) (string, uint, error) {
 	return "", 0, fmt.Errorf(StrError(err))
 }
 
+// ScanFileCb scans a single file for viruses using the ClamAV databases and using callbacks from
+// ClamAV to read/resolve file data. The callbacks can be used to scan files in memory, to scan multiple
+// files inside archives, etc. The function returns the virus name
+// (if found), the number of bytes read from the file in CountPrecision units, and a status code.
+// If the file is clean the error code will be Success (Clean) and virus name will be empty. If a
+// virus is found the error code will be the corresponding string for Virus (currently "Virus(es)
+// detected").
+// The context argument will be sent back to the callbacks, so effort must be made to retain it
+// throughout the execution of the scan from garbage collection
+func (e *Engine) ScanFileCb(path string, opts uint, context *interface{}) (string, uint, error) {
+	var name *C.char
+	var scanned C.ulong
+	cpath := C.CString(path)
+	defer C.free(unsafe.Pointer(cpath))
+	err := ErrorCode(C.cl_scanfile_callback(cpath, &name, &scanned, (*C.struct_cl_engine)(e), C.uint(opts), unsafe.Pointer(context)))
+	if err == Success {
+		return "", 0, nil
+	}
+	if err == Virus {
+		return C.GoString(name), uint(scanned), fmt.Errorf(StrError(err))
+	}
+	return "", 0, fmt.Errorf(StrError(err))
+}
+
 // LoadDB loads a single database file or all databases depending on whether its first argument
 // (path) points to a file or a directory. A number of loaded signatures will be added to signo
 // (the virus counter should be initialized to zero initially)
@@ -255,5 +289,10 @@ func Retver() string {
 
 // Strerror converts LibClam error codes to human readable format
 func StrError(errno ErrorCode) string {
-	return C.GoString(C.cl_strerror(C.int(errno)))
+	return errno.String()
+}
+
+// String converts the error code to human readable format
+func (e ErrorCode) String() string {
+	return C.GoString(C.cl_strerror(C.int(e)))
 }

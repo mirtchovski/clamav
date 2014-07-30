@@ -50,8 +50,7 @@ var StrErrorTests = []struct {
 	{Etmpdir, "Can't create temporary directory"},
 	{Emap, "Can't map file into memory"},
 	{Emem, "Can't allocate memory"},
-	//{Etimeout, "Time limit reached"},
-	{Etimeout, "Unknown error code"},
+	{Etimeout, "Time limit reached"},
 	{Break, "Unknown error code"},
 	{Emaxrec, "CL_EMAXREC"},
 	{Emaxsize, "CL_EMAXSIZE"},
@@ -358,8 +357,12 @@ var scanFiles = []struct {
 }
 
 func testInitAll() (*Engine, error) {
+	err := Init(InitDefault)
+	if err != nil {
+		return nil, err
+	}
 	eng := New()
-	_, err := eng.Load(DBDir(), DbStdopt)
+	_, err = eng.Load(DBDir(), DbStdopt)
 	if err != nil {
 		return nil, errors.New("can not open virus database. please use ClamAV's freshclam tool to download a public database")
 	}
@@ -370,7 +373,7 @@ func testInitAll() (*Engine, error) {
 func TestScan(t *testing.T) {
 	eng, err := testInitAll()
 	if err != nil {
-		t.Fatalf("testInitAll: %v")
+		t.Fatalf("testInitAll: %v", err)
 	}
 	defer eng.Free()
 

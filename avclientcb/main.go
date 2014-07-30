@@ -2,7 +2,8 @@
 // Use of this source code is governed by a
 // license that can be found in the LICENSE file.
 
-// This is an implementation of a client for the ClamAV library. The code here will accept files and
+// This is an implementation of a client for the ClamAV library which uses the callback mechanism
+// of ClamAV to scan files for viruses. The code here will accept files and
 // directories as arguments and will crawl them (recursively) scanning every file. This code will
 // not follow symlinks but will also not make an effort to stay on the same computer. If you have
 // remote mounted filesystems this code will scan all files available on them.
@@ -49,7 +50,7 @@ func counter(cnt, out chan string) {
 		}
 		out <- path
 	}
-	log.Printf("directory walk complete. files seen: %d", c)
+	log.Printf("total submitted for scan: %d", c)
 	close(out)
 }
 
@@ -60,7 +61,8 @@ func worker(in, cnt chan string, done chan bool, engine *clamav.Engine) {
 			log.Printf("scanning %s", path)
 		}
 		if *scan {
-			virus, _, err := engine.ScanFile(path, clamav.ScanStdopt|clamav.ScanBlockbroken)
+			var iface = interface{}(path)
+			virus, _, err := engine.ScanFileCb(path, clamav.ScanStdopt, &iface)
 			if virus != "" {
 				log.Printf("virus found in %s: %s", path, virus)
 			} else if err != nil {
@@ -106,7 +108,40 @@ func walker(path string, in chan string) {
 	in <- path
 }
 
+func PreCacheCb(fd int, ftype string, context *interface{}) clamav.ErrorCode {
+	if *debug {
+		log.Printf("pre cache callback for %s: fd=%d ftype=%s", *context, fd, ftype)
+	}
+
+	return clamav.Clean
+}
+
+func PreScanCb(fd int, ftype string, context *interface{}) clamav.ErrorCode {
+	if *debug {
+		log.Printf("pre scan callback for %s: fd=%d ftype=%s", *context, fd, ftype)
+	}
+
+	return clamav.Clean
+}
+
+func PostScanCb(fd int, result clamav.ErrorCode, virname string, context *interface{}) clamav.ErrorCode {
+	if *debug {
+		log.Printf("post scan callback for %s: fd=%d result=%s virus=%s", *context, fd, clamav.StrError(result), virname)
+	}
+
+	return clamav.Clean
+}
+
+func HashCb(fd int, size uint64, md5 []byte, virname string, context *interface{}) {
+	if *debug {
+		log.Printf("hash callback for %s: fd=%d size=%d md5=%s virus=%s", *context, fd, size, md5, virname)
+	}
+
+	return
+}
+
 func initClamAV() *clamav.Engine {
+	clamav.Init(clamav.InitDefault)
 	engine := clamav.New()
 	sigs, err := engine.Load(clamav.DBDir(), clamav.DbStdopt)
 	if err != nil {
@@ -115,6 +150,12 @@ func initClamAV() *clamav.Engine {
 	if *debug {
 		log.Printf("loaded %d signatures", sigs)
 	}
+
+	engine.SetPreCacheCallback(PreCacheCb)
+	engine.SetPreScanCallback(PreScanCb)
+	engine.SetPostScanCallback(PostScanCb)
+	engine.SetHashCallback(HashCb)
+
 	engine.Compile()
 
 	return engine
@@ -125,8 +166,6 @@ func main() {
 
 	flag.Usage = usage
 	flag.Parse()
-
-	clamav.Init(clamav.InitDefault)
 
 	if *clamavversion {
 		fmt.Println(clamav.Retver())
