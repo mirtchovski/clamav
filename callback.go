@@ -15,8 +15,8 @@ void hash_cgo(int fd, unsigned long long size, const unsigned char *md5, const c
 */
 import "C"
 import (
-	"unsafe"
 	"fmt"
+	"unsafe"
 )
 
 type cbData struct {
@@ -32,6 +32,7 @@ var callbacks = map[string]interface{}{
 	"msg":      nil,
 	"meta":     nil,
 }
+
 //export precache_cb
 func precache_cb(fd C.int, ftype *C.char, context unsafe.Pointer) C.cl_error_t {
 	v := callbacks["precache"]
@@ -46,7 +47,6 @@ func (e *Engine) SetPreCacheCallback(cb CallbackPreCache) {
 
 	C.cl_engine_set_clcb_pre_cache((*C.struct_cl_engine)(unsafe.Pointer(e)), (C.clcb_pre_cache)(unsafe.Pointer(C.precache_cgo)))
 }
-
 
 //export prescan_cb
 func prescan_cb(fd C.int, ftype *C.char, context unsafe.Pointer) C.cl_error_t {
@@ -178,7 +178,6 @@ func (e *Engine) ScanMap(fmap *Fmap, opts uint, context *interface{}) (string, u
 	return "", 0, fmt.Errorf(StrError(err))
 }
 
-
 /* These below do not seem to exist in libclamav.a
 *
 * func metacb(container_type *C.char, fsize_container C.ulong, filename *C.char,
@@ -204,4 +203,4 @@ func (e *Engine) ScanMap(fmap *Fmap, opts uint, context *interface{}) (string, u
 *
 *	return C.cl_engine_set_clcb_meta((C.clcb_meta)(unsafe.Pointer(metacb)))
 *}
-*/
+ */
