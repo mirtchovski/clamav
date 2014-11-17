@@ -32,6 +32,7 @@ var clamavversion = flag.Bool("clamavversion", false, "print out the version of 
 var scan = flag.Bool("scan", true, "don't scan files for viruses, only walk directories")
 var workers = flag.Int("workers", 8, "number of scanning workers")
 var cpus = flag.Int("cpus", 2, "number of active OS threads")
+var db = flag.String("db", clamav.DBDir(), "virus definition database")
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "usage: %s path [...]\n", os.Args[0])
@@ -62,7 +63,7 @@ func worker(in, cnt chan string, done chan bool, engine *clamav.Engine) {
 		}
 		if *scan {
 			var iface = interface{}(path)
-			virus, _, err := engine.ScanFileCb(path, clamav.ScanStdopt, &iface)
+			virus, _, err := engine.ScanFileCb(path, clamav.ScanStdopt|clamav.ScanAllmatches, &iface)
 			if virus != "" {
 				log.Printf("virus found in %s: %s", path, virus)
 			} else if err != nil {
@@ -143,7 +144,7 @@ func HashCb(fd int, size uint64, md5 []byte, virname string, context *interface{
 func initClamAV() *clamav.Engine {
 	clamav.Init(clamav.InitDefault)
 	engine := clamav.New()
-	sigs, err := engine.Load(clamav.DBDir(), clamav.DbStdopt)
+	sigs, err := engine.Load(*db, clamav.DbStdopt)
 	if err != nil {
 		log.Fatalf("can not initialize ClamAV engine: %v", err)
 	}
