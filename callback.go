@@ -14,16 +14,9 @@ cl_error_t postscan_cgo(int fd, int result, char *virname, void *context);
 void hash_cgo(int fd, unsigned long long size, const unsigned char *md5, const char *virname, void *context);
 */
 import "C"
-import (
-	"fmt"
-	"unsafe"
-)
+import "unsafe"
 
-type cbData struct {
-	cb interface{} // callback function
-}
-
-var callbacks = map[string]interface{}{
+var callbackFuncs = map[string]interface{}{
 	"precache": nil,
 	"prescan":  nil,
 	"postscan": nil,
@@ -33,50 +26,62 @@ var callbacks = map[string]interface{}{
 	"meta":     nil,
 }
 
+func findContext(key uintptr) interface{} {
+	callbacks.Lock()
+	defer callbacks.Unlock()
+	if v, ok := callbacks.cb[key]; ok {
+		return v
+	}
+	panic("no context for callback")
+}
+
 //export precache_cb
 func precache_cb(fd C.int, ftype *C.char, context unsafe.Pointer) C.cl_error_t {
-	v := callbacks["precache"]
-	if v == nil {
+	fn := callbackFuncs["precache"]
+	if fn == nil {
 		return Clean
 	}
-	return C.cl_error_t(v.(CallbackPreCache)(int(fd), C.GoString(ftype), (*interface{})(context)))
+	ctx := findContext(uintptr(context))
+	return C.cl_error_t(fn.(CallbackPreCache)(int(fd), C.GoString(ftype), ctx))
 }
 
 func (e *Engine) SetPreCacheCallback(cb CallbackPreCache) {
-	callbacks["precache"] = cb
+	callbackFuncs["precache"] = cb
 
 	C.cl_engine_set_clcb_pre_cache((*C.struct_cl_engine)(unsafe.Pointer(e)), (C.clcb_pre_cache)(unsafe.Pointer(C.precache_cgo)))
 }
 
 //export prescan_cb
 func prescan_cb(fd C.int, ftype *C.char, context unsafe.Pointer) C.cl_error_t {
-	v := callbacks["prescan"]
+	v := callbackFuncs["prescan"]
 	if v == nil {
 		return Clean
 	}
-	return C.cl_error_t(v.(CallbackPreScan)(int(fd), C.GoString(ftype), (*interface{})(context)))
+	ctx := findContext(uintptr(context))
+	return C.cl_error_t(v.(CallbackPreScan)(int(fd), C.GoString(ftype), ctx))
 }
 
 // SetPreScanCallback will set the callback function ClamAV will call before a
 // scan commences to cb
 func (e *Engine) SetPreScanCallback(cb CallbackPreScan) {
-	callbacks["prescan"] = cb
+	callbackFuncs["prescan"] = cb
 	C.cl_engine_set_clcb_pre_scan((*C.struct_cl_engine)(unsafe.Pointer(e)), C.clcb_pre_scan(unsafe.Pointer(C.prescan_cgo)))
 }
 
 //export postscan_cb
 func postscan_cb(fd, result C.int, virname *C.char, context unsafe.Pointer) C.cl_error_t {
-	v := callbacks["postscan"]
+	v := callbackFuncs["postscan"]
 	if v == nil {
 		return Clean
 	}
-	return C.cl_error_t(v.(CallbackPostScan)(int(fd), ErrorCode(result), C.GoString(virname), (*interface{})(context)))
+	ctx := findContext(uintptr(context))
+	return C.cl_error_t(v.(CallbackPostScan)(int(fd), ErrorCode(result), C.GoString(virname), ctx))
 }
 
 // SetPostScanCallback will set the callback function ClamAV will call before the
 // cache is consulted for a particular scan to cb
 func (e *Engine) SetPostScanCallback(cb CallbackPostScan) {
-	callbacks["postscan"] = cb
+	callbackFuncs["postscan"] = cb
 	C.cl_engine_set_clcb_post_scan((*C.struct_cl_engine)(unsafe.Pointer(e)), (C.clcb_post_scan)(unsafe.Pointer(C.postscan_cgo)))
 }
 
@@ -102,11 +107,12 @@ func pread_cb(handle unsafe.Pointer, buf unsafe.Pointer, count C.size_t, offset 
 
 //export msgcb
 var msgcb = func(severity C.enum_cl_msg, fullmsg *C.char, msg *C.char, context unsafe.Pointer) {
-	v := callbacks["msg"]
+	v := callbackFuncs["msg"]
 	if v == nil {
 		return
 	}
-	v.(CallbackMsg)(Msg(severity), C.GoString(fullmsg), C.GoString(msg), (*interface{})(context))
+	ctx := findContext(uintptr(context))
+	v.(CallbackMsg)(Msg(severity), C.GoString(fullmsg), C.GoString(msg), ctx)
 }
 
 // SetMsgCallback will set the callback function ClamAV will call for any error and warning
@@ -116,23 +122,24 @@ var msgcb = func(severity C.enum_cl_msg, fullmsg *C.char, msg *C.char, context u
 // Just like with cl_debug() this must be called before going multithreaded.
 // Callable before cl_init, if you want to log messages from cl_init() itself.
 func SetMsgCallback(cb CallbackMsg) {
-	callbacks["msg"] = cb
+	callbackFuncs["msg"] = cb
 	C.cl_set_clcb_msg((C.clcb_msg)(unsafe.Pointer(&msgcb)))
 }
 
 //export hash_cb
 func hash_cb(fd C.int, size C.ulonglong, md5 *C.uchar, virname *C.char, context unsafe.Pointer) {
-	v := callbacks["hash"]
+	v := callbackFuncs["hash"]
 	if v == nil {
 		return
 	}
-	v.(CallbackHash)(int(fd), uint64(size), []byte(C.GoBytes(unsafe.Pointer(md5), 16)), C.GoString(virname), (*interface{})(context))
+	ctx := findContext(uintptr(context))
+	v.(CallbackHash)(int(fd), uint64(size), []byte(C.GoBytes(unsafe.Pointer(md5), 16)), C.GoString(virname), ctx)
 }
 
 // SetHashCallback will set the callback function ClamAV will call with statistics
 // about the scanned file
 func (e *Engine) SetHashCallback(cb CallbackHash) {
-	callbacks["hash"] = cb
+	callbackFuncs["hash"] = cb
 
 	C.cl_engine_set_clcb_hash((*C.struct_cl_engine)(unsafe.Pointer(e)), (C.clcb_hash)(unsafe.Pointer(C.hash_cgo)))
 }
@@ -141,6 +148,8 @@ func (e *Engine) SetHashCallback(cb CallbackHash) {
  * read)-like interface, for example a WIN32 HANDLE.
  * By default fmap will use aging to discard old data, unless you tell it not
  * to via the parameter "age". The handle will be passed to the callback each time.
+ *
+ * FmapOpenHandle is currently unumplemented
  */
 func FmapOpenHandle(handle *interface{}, offset int64, length uint32, cb CallbackPread, age bool) *Fmap {
 	return nil
@@ -164,21 +173,11 @@ func (f *Fmap) Close() {
 	C.cl_fmap_close((*C.struct_cl_fmap)(f))
 }
 
-/* ScanMapCb scans custom data */
-func (e *Engine) ScanMap(fmap *Fmap, opts uint, context *interface{}) (string, uint, error) {
-	var name *C.char
-	var scanned C.ulong
-	err := ErrorCode(C.cl_scanmap_callback((*C.cl_fmap_t)(fmap), &name, &scanned, (*C.struct_cl_engine)(e), C.uint(opts), unsafe.Pointer(context)))
-	if err == Success {
-		return "", 0, nil
-	}
-	if err == Virus {
-		return C.GoString(name), uint(scanned), fmt.Errorf(StrError(err))
-	}
-	return "", 0, fmt.Errorf(StrError(err))
-}
-
 /* These below do not seem to exist in libclamav.a
+* type cbData struct {
+* 	cb interface{} // callback function
+* }
+*
 *
 * func metacb(container_type *C.char, fsize_container C.ulong, filename *C.char,
 *			  realSize C.ulong,  is_encrypted C.int, filepos_container C.uint, _ unsafe.Pointer) ErrorCode {

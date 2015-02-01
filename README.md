@@ -12,7 +12,7 @@ To build make sure the C compiler can see the libclamav shared library, if not y
 specify it as `LDFLAGS: -L/path/to/dylib` in the CGo header of each file importing "C". Alternatively, if you
 have compiled ClamAV in a non-standard directory you can use the following arguments to the go tool:
 
-    CGO_CFLAGS=-I/path/to/include CGO_LDFLAGS=-L/path/to/lib go install
+	CGO_CFLAGS=-I/path/to/include CGO_LDFLAGS=-L/path/to/lib go install
 
 For example, on Mountain Lion, after compiling ClamAV by hand, the library gets installed in 
 `/usr/local/lib/x86_64`. The following command then works to compile the wrappers:

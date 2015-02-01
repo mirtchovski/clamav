@@ -62,8 +62,7 @@ func worker(in, cnt chan string, done chan bool, engine *clamav.Engine) {
 			log.Printf("scanning %s", path)
 		}
 		if *scan {
-			var iface = interface{}(path)
-			virus, _, err := engine.ScanFileCb(path, clamav.ScanStdopt|clamav.ScanAllmatches, &iface)
+			virus, _, err := engine.ScanFileCb(path, clamav.ScanStdopt, path)
 			if virus != "" {
 				log.Printf("virus found in %s: %s", path, virus)
 			} else if err != nil {
@@ -109,33 +108,33 @@ func walker(path string, in chan string) {
 	in <- path
 }
 
-func PreCacheCb(fd int, ftype string, context *interface{}) clamav.ErrorCode {
+func PreCacheCb(fd int, ftype string, context interface{}) clamav.ErrorCode {
 	if *debug {
-		log.Printf("pre cache callback for %s: fd=%d ftype=%s", *context, fd, ftype)
+		log.Printf("pre cache callback for %s: fd=%d ftype=%s", context, fd, ftype)
 	}
 
 	return clamav.Clean
 }
 
-func PreScanCb(fd int, ftype string, context *interface{}) clamav.ErrorCode {
+func PreScanCb(fd int, ftype string, context interface{}) clamav.ErrorCode {
 	if *debug {
-		log.Printf("pre scan callback for %s: fd=%d ftype=%s", *context, fd, ftype)
+		log.Printf("pre scan callback for %s: fd=%d ftype=%s", context, fd, ftype)
 	}
 
 	return clamav.Clean
 }
 
-func PostScanCb(fd int, result clamav.ErrorCode, virname string, context *interface{}) clamav.ErrorCode {
+func PostScanCb(fd int, result clamav.ErrorCode, virname string, context interface{}) clamav.ErrorCode {
 	if *debug {
-		log.Printf("post scan callback for %s: fd=%d result=%s virus=%s", *context, fd, clamav.StrError(result), virname)
+		log.Printf("post scan callback for %s: fd=%d result=%s virus=%s", context, fd, clamav.StrError(result), virname)
 	}
 
 	return clamav.Clean
 }
 
-func HashCb(fd int, size uint64, md5 []byte, virname string, context *interface{}) {
+func HashCb(fd int, size uint64, md5 []byte, virname string, context interface{}) {
 	if *debug {
-		log.Printf("hash callback for %s: fd=%d size=%d md5=%s virus=%s", *context, fd, size, md5, virname)
+		log.Printf("hash callback for %s: fd=%d size=%d md5=%s virus=%s", context, fd, size, md5, virname)
 	}
 
 	return

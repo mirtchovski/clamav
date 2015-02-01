@@ -26,6 +26,7 @@ import (
 import "github.com/mirtchovski/clamav"
 
 var debug = flag.Bool("debug", false, "enable debugging output")
+var db = flag.String("db", "", "virus database file/directory")
 var clamavdebug = flag.Bool("clamavdebug", false, "enable debugging output from the ClamAV engine")
 var clamavversion = flag.Bool("clamavversion", false, "print out the version of ClamAV linked")
 var scan = flag.Bool("scan", true, "don't scan files for viruses, only walk directories")
@@ -107,6 +108,9 @@ func walker(path string, in chan string) {
 }
 
 func initClamAV() *clamav.Engine {
+	if *db == "" {
+		*db = clamav.DBDir()
+	}
 	engine := clamav.New()
 	sigs, err := engine.Load(clamav.DBDir(), clamav.DbStdopt)
 	if err != nil {

@@ -221,7 +221,7 @@ const InitDefault = 0
 // Clean = File is scanned
 // Break = Whitelisted by callback - file is skipped and marked as Clean
 // Virus = Blacklisted by callback - file is skipped and marked as Virus
-type CallbackPreCache func(fd int, ftype string, context *interface{}) ErrorCode
+type CallbackPreCache func(fd int, ftype string, context interface{}) ErrorCode
 
 // CallbackPreScan is called for each NEW file (inner and outer) before the scanning takes place. This is
 // roughly the the same as CallbackPreCache, but it is affected by clean file caching.
@@ -237,7 +237,7 @@ type CallbackPreCache func(fd int, ftype string, context *interface{}) ErrorCode
 // Clean = File is scanned
 // Break = Whitelisted by callback - file is skipped and marked as Clean
 // Virus = Blacklisted by callback - file is skipped and marked as Virus
-type CallbackPreScan func(fd int, ftype string, context *interface{}) ErrorCode
+type CallbackPreScan func(fd int, ftype string, context interface{}) ErrorCode
 
 // CallbackPostScan is called for each processed file (inner and outer), after the scanning is complete.
 //
@@ -251,7 +251,7 @@ type CallbackPreScan func(fd int, ftype string, context *interface{}) ErrorCode
 // Clean = Scan result is not overridden
 // Break = Whitelisted by callback - scan result is set to Clean
 // Virus = Blacklisted by callback - scan result is set to Virus
-type CallbackPostScan func(fd int, result ErrorCode, virname string, context *interface{}) ErrorCode
+type CallbackPostScan func(fd int, result ErrorCode, virname string, context interface{}) ErrorCode
 
 // CallbackSigLoad is called whenever a new signature has been loaded
 //
@@ -287,10 +287,10 @@ const (
 // You can use context of cl_scandesc_callback to convey more information to the callback (such as the filename!)
 // Note: setting a 2nd callbacks overwrites previous, multiple callbacks are not
 // supported
-type CallbackMsg func(m Msg, full, msg string, context *interface{})
+type CallbackMsg func(m Msg, full, msg string, context interface{})
 
 // CallbackHash is a callback that provides hash statistics for a particular file
-type CallbackHash func(fd int, size uint64, md5 []byte, virusName string, context *interface{})
+type CallbackHash func(fd int, size uint64, md5 []byte, virusName string, context interface{})
 
 // CallbackPread is a callback that will be called by ClamAV to fill in part of an object represented by an fmap handle (file in memory, memory location, etc)
 type CallbackPread func(handle *interface{}, buf []byte, offset int64) int64

@@ -9,7 +9,7 @@ package clamav
 /*
 #include <clamav.h>
 #include <stdlib.h>
-#cgo LDFLAGS:-lclamav
+#cgo LDFLAGS:-L/usr/local/lib/x86_64 -lclamav
 */
 import "C"
 
@@ -20,6 +20,19 @@ import (
 )
 
 var initOnce sync.Once
+
+// Callback is used to store the interface passed to ScanFileCb. This
+// object is then returned in each ClamAV callback for the duration of the
+// file scan
+type Callback struct {
+	sync.Mutex
+	nextId uintptr
+	cb     map[uintptr]interface{}
+}
+
+var callbacks = Callback{
+	cb: map[uintptr]interface{}{},
+}
 
 // Init initializes the ClamAV library. A suitable initialization can be
 // achieved by passing clamav.InitDefault to this function.
@@ -185,12 +198,67 @@ func (e *Engine) ScanFile(path string, opts uint) (string, uint, error) {
 // detected").
 // The context argument will be sent back to the callbacks, so effort must be made to retain it
 // throughout the execution of the scan from garbage collection
-func (e *Engine) ScanFileCb(path string, opts uint, context *interface{}) (string, uint, error) {
+func (e *Engine) ScanFileCb(path string, opts uint, context interface{}) (string, uint, error) {
 	var name *C.char
 	var scanned C.ulong
+	// pass a C-allocated pointer to the path to avoid crashing with garbage collector
 	cpath := C.CString(path)
 	defer C.free(unsafe.Pointer(cpath))
-	err := ErrorCode(C.cl_scanfile_callback(cpath, &name, &scanned, (*C.struct_cl_engine)(e), C.uint(opts), unsafe.Pointer(context)))
+
+	// find where to store the context in our callback map. we do _not_ pass the context to
+	// C directly because aggressive garbage collection will move it around
+	callbacks.Lock()
+	// find the next available empty spot. uintptr overflow should be ok -- we don't expect
+	// to have Max(uintptr) files scanned at the same time
+	for _, ok := callbacks.cb[callbacks.nextId]; ok; callbacks.nextId++ {
+	}
+	cbidx := callbacks.nextId
+	callbacks.cb[cbidx] = context
+	callbacks.nextId++
+	callbacks.Unlock()
+
+	// cleanup
+	defer func() {
+		callbacks.Lock()
+		delete(callbacks.cb, cbidx)
+		callbacks.Unlock()
+	}()
+
+	err := ErrorCode(C.cl_scanfile_callback(cpath, &name, &scanned, (*C.struct_cl_engine)(e), C.uint(opts), unsafe.Pointer(cbidx)))
+	if err == Success {
+		return "", 0, nil
+	}
+	if err == Virus {
+		return C.GoString(name), uint(scanned), fmt.Errorf(StrError(err))
+	}
+	return "", 0, fmt.Errorf(StrError(err))
+}
+
+/* ScanMapCb scans custom data */
+func (e *Engine) ScanMap(fmap *Fmap, opts uint, context *interface{}) (string, uint, error) {
+	var name *C.char
+	var scanned C.ulong
+
+	// find where to store the context in our callback map. we do _not_ pass the context to
+	// C directly because aggressive garbage collection will move it around
+	callbacks.Lock()
+	// find the next available empty spot. uintptr overflow should be ok -- we don't expect
+	// to have Max(uintptr) files scanned at the same time
+	for _, ok := callbacks.cb[callbacks.nextId]; ok; callbacks.nextId++ {
+	}
+	cbidx := callbacks.nextId
+	callbacks.cb[cbidx] = context
+	callbacks.nextId++
+	callbacks.Unlock()
+
+	// cleanup
+	defer func() {
+		callbacks.Lock()
+		delete(callbacks.cb, cbidx)
+		callbacks.Unlock()
+	}()
+
+	err := ErrorCode(C.cl_scanmap_callback((*C.cl_fmap_t)(fmap), &name, &scanned, (*C.struct_cl_engine)(e), C.uint(opts), unsafe.Pointer(cbidx)))
 	if err == Success {
 		return "", 0, nil
 	}
