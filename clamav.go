@@ -234,8 +234,18 @@ func (e *Engine) ScanFileCb(path string, opts uint, context interface{}) (string
 	return "", 0, fmt.Errorf(StrError(err))
 }
 
-/* ScanMapCb scans custom data */
-func (e *Engine) ScanMap(fmap *Fmap, opts uint, context *interface{}) (string, uint, error) {
+// OpenMemory creates an object from the given memory that can be scanned using ScanMapCb
+func OpenMemory(start []byte) *Fmap {
+	return (*Fmap)(C.cl_fmap_open_memory(unsafe.Pointer(&start[0]), C.size_t(len(start))))
+}
+
+// CloseMemory destroys the fmap associated with an in-memory object
+func CloseMemory(f *Fmap) {
+	C.cl_fmap_close((*C.cl_fmap_t)(f))
+}
+
+// ScanMapCb scans custom data
+func (e *Engine) ScanMapCb(fmap *Fmap, opts uint, context interface{}) (string, uint, error) {
 	var name *C.char
 	var scanned C.ulong
 
