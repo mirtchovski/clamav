@@ -33,6 +33,9 @@ var scan = flag.Bool("scan", true, "don't scan files for viruses, only walk dire
 var workers = flag.Int("workers", 8, "number of scanning workers")
 var cpus = flag.Int("cpus", 2, "number of active OS threads")
 var db = flag.String("db", clamav.DBDir(), "virus definition database")
+var testmap = flag.Bool("testfmap", false, "test memory scanning only")
+
+var eicar = []byte(`X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*`)
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "usage: %s path [...]\n", os.Args[0])
@@ -173,7 +176,7 @@ func main() {
 	}
 
 	args := flag.Args()
-	if len(args) == 0 {
+	if len(args) == 0 && !*testmap {
 		fmt.Fprintln(os.Stderr, "error: missing path\n")
 		usage()
 	}
@@ -183,6 +186,18 @@ func main() {
 	if *scan {
 		log.Println("initializing ClamAV database...")
 		engine = initClamAV()
+	}
+
+	if *testmap {
+		fmap := clamav.OpenMemory(eicar)
+		defer clamav.CloseMemory(fmap)
+
+		virus, _, err := engine.ScanMapCb(fmap, clamav.ScanStdopt|clamav.ScanAllmatches, "eicar memorytest")
+		if err != nil {
+			log.Printf("error scanning in-memory: %v\n", err)
+		}
+		log.Printf("in-memory scan result: %s (eicar)\n", virus)
+		return
 	}
 
 	in := make(chan string, 1024)
