@@ -61,7 +61,7 @@ func worker(in, cnt chan string, done chan bool, engine *clamav.Engine) {
 			log.Printf("scanning %s", path)
 		}
 		if *scan {
-			virus, _, err := engine.ScanFile(path, clamav.ScanStdopt|clamav.ScanBlockbroken)
+			virus, _, err := engine.ScanFile(path, clamav.ScanStdopt|clamav.ScanAllmatches)
 			if virus != "" {
 				log.Printf("virus found in %s: %s", path, virus)
 			} else if err != nil {
