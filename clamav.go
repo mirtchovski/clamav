@@ -9,10 +9,18 @@ package clamav
 /*
 #include <clamav.h>
 #include <stdlib.h>
+#cgo CPPFLAGS:-Wno-incompatible-pointer-types-discards-qualifiers
 #cgo LDFLAGS:-L/usr/local/lib/x86_64 -lclamav
+
+char *fixup_clam_virus(char **name) {
+	// this undocumented lovelyness brought to you by clamscan, including the comments
+    char **nvirpp = (const char **)*name; // allmatch needs an extra dereference
+    return nvirpp[0]; // this is the first virus
+}
 */
 import "C"
 
+// #cgo LDFLAGS:-L/usr/local/lib/x86_64 -lclamav
 import (
 	"fmt"
 	"sync"
@@ -184,7 +192,11 @@ func (e *Engine) ScanFile(path string, opts uint) (string, uint, error) {
 		return "", 0, nil
 	}
 	if err == Virus {
-		return C.GoString(name), uint(scanned), fmt.Errorf(StrError(err))
+		if opts&ScanAllmatches > 0 {
+			return C.GoString(C.fixup_clam_virus(&name)), uint(scanned), fmt.Errorf(StrError(err))
+		} else {
+			return C.GoString(name), uint(scanned), fmt.Errorf(StrError(err))
+		}
 	}
 	return "", 0, fmt.Errorf(StrError(err))
 }
@@ -229,7 +241,11 @@ func (e *Engine) ScanFileCb(path string, opts uint, context interface{}) (string
 		return "", 0, nil
 	}
 	if err == Virus {
-		return C.GoString(name), uint(scanned), fmt.Errorf(StrError(err))
+		if opts&ScanAllmatches > 0 {
+			return C.GoString(C.fixup_clam_virus(&name)), uint(scanned), fmt.Errorf(StrError(err))
+		} else {
+			return C.GoString(name), uint(scanned), fmt.Errorf(StrError(err))
+		}
 	}
 	return "", 0, fmt.Errorf(StrError(err))
 }
