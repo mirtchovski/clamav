@@ -9,7 +9,7 @@ package clamav
 /*
 #include <clamav.h>
 #include <stdlib.h>
-#cgo CPPFLAGS:-Wno-incompatible-pointer-types-discards-qualifiers
+#cgo darwin CPPFLAGS:-Wno-incompatible-pointer-types-discards-qualifiers
 #cgo LDFLAGS:-L/usr/local/lib/x86_64 -lclamav
 
 char *fixup_clam_virus(char **name) {
