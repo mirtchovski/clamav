@@ -89,6 +89,12 @@ func walker(path string, in chan string) {
 		log.Printf("%v", err)
 		return
 	}
+	if lfi.Mode()&os.ModeSymlink != 0 {
+		if *debug {
+			log.Printf("skipping symlink %s\n", path)
+		}
+		return
+	}
 	if lfi.IsDir() {
 		dir, err := ioutil.ReadDir(path)
 		if err != nil {
