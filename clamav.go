@@ -7,11 +7,11 @@
 package clamav
 
 /*
-#include <clamav.h>
-#include <stdlib.h>
 #cgo darwin CPPFLAGS:-Wno-incompatible-pointer-types-discards-qualifiers
 #cgo LDFLAGS:-L/usr/local/lib/x86_64 -lclamav
 
+#include <clamav.h>
+#include <stdlib.h>
 char *fixup_clam_virus(char **name) {
 	// this undocumented lovelyness brought to you by clamscan, including the comments
     char **nvirpp = (const char **)*name; // allmatch needs an extra dereference
@@ -20,7 +20,6 @@ char *fixup_clam_virus(char **name) {
 */
 import "C"
 
-// #cgo LDFLAGS:-L/usr/local/lib/x86_64 -lclamav
 import (
 	"fmt"
 	"sync"
