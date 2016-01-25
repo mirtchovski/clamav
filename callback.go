@@ -26,22 +26,13 @@ var callbackFuncs = map[string]interface{}{
 	"meta":     nil,
 }
 
-func findContext(key uintptr) interface{} {
-	callbacks.Lock()
-	defer callbacks.Unlock()
-	if v, ok := callbacks.cb[key]; ok {
-		return v
-	}
-	panic("no context for callback")
-}
-
 //export precache_cb
 func precache_cb(fd C.int, ftype *C.char, context unsafe.Pointer) C.cl_error_t {
 	fn := callbackFuncs["precache"]
 	if fn == nil {
 		return Clean
 	}
-	ctx := findContext(uintptr(context))
+	ctx := findContext(context)
 	return C.cl_error_t(fn.(CallbackPreCache)(int(fd), C.GoString(ftype), ctx))
 }
 
@@ -57,7 +48,7 @@ func prescan_cb(fd C.int, ftype *C.char, context unsafe.Pointer) C.cl_error_t {
 	if v == nil {
 		return Clean
 	}
-	ctx := findContext(uintptr(context))
+	ctx := findContext(context)
 	return C.cl_error_t(v.(CallbackPreScan)(int(fd), C.GoString(ftype), ctx))
 }
 
@@ -74,7 +65,7 @@ func postscan_cb(fd, result C.int, virname *C.char, context unsafe.Pointer) C.cl
 	if v == nil {
 		return Clean
 	}
-	ctx := findContext(uintptr(context))
+	ctx := findContext(context)
 	return C.cl_error_t(v.(CallbackPostScan)(int(fd), ErrorCode(result), C.GoString(virname), ctx))
 }
 
@@ -111,7 +102,7 @@ var msgcb = func(severity C.enum_cl_msg, fullmsg *C.char, msg *C.char, context u
 	if v == nil {
 		return
 	}
-	ctx := findContext(uintptr(context))
+	ctx := findContext(context)
 	v.(CallbackMsg)(Msg(severity), C.GoString(fullmsg), C.GoString(msg), ctx)
 }
 
@@ -132,7 +123,7 @@ func hash_cb(fd C.int, size C.ulonglong, md5 *C.uchar, virname *C.char, context 
 	if v == nil {
 		return
 	}
-	ctx := findContext(uintptr(context))
+	ctx := findContext(context)
 	v.(CallbackHash)(int(fd), uint64(size), []byte(C.GoBytes(unsafe.Pointer(md5), 16)), C.GoString(virname), ctx)
 }
 

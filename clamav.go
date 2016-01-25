@@ -12,11 +12,6 @@ package clamav
 
 #include <clamav.h>
 #include <stdlib.h>
-char *fixup_clam_virus(char **name) {
-	// this undocumented lovelyness brought to you by clamscan, including the comments
-    char **nvirpp = (const char **)*name; // allmatch needs an extra dereference
-    return nvirpp[0]; // this is the first virus
-}
 */
 import "C"
 
@@ -34,11 +29,44 @@ var initOnce sync.Once
 type Callback struct {
 	sync.Mutex
 	nextId uintptr
-	cb     map[uintptr]interface{}
+	cb     map[unsafe.Pointer]interface{}
 }
 
 var callbacks = Callback{
-	cb: map[uintptr]interface{}{},
+	cb: map[unsafe.Pointer]interface{}{},
+}
+
+func setContext(i interface{}) unsafe.Pointer {
+	cptr := C.malloc(1)
+	if cptr == nil {
+		panic("C malloc")
+	}
+
+	callbacks.Lock()
+	defer callbacks.Unlock()
+	callbacks.cb[cptr] = i
+
+	return cptr
+}
+
+func findContext(key unsafe.Pointer) interface{} {
+	callbacks.Lock()
+	defer callbacks.Unlock()
+	if v, ok := callbacks.cb[key]; ok {
+		return v
+	}
+	panic("no context for callback")
+}
+
+func deleteContext(key unsafe.Pointer) {
+	callbacks.Lock()
+	defer callbacks.Unlock()
+	if _, ok := callbacks.cb[key]; ok {
+		delete(callbacks.cb, key)
+		C.free(key)
+		return
+	}
+	panic("no context to delete")
 }
 
 // Init initializes the ClamAV library. A suitable initialization can be
@@ -191,11 +219,7 @@ func (e *Engine) ScanFile(path string, opts uint) (string, uint, error) {
 		return "", 0, nil
 	}
 	if err == Virus {
-		if opts&ScanAllmatches > 0 {
-			return C.GoString(C.fixup_clam_virus(&name)), uint(scanned), fmt.Errorf(StrError(err))
-		} else {
-			return C.GoString(name), uint(scanned), fmt.Errorf(StrError(err))
-		}
+		return C.GoString(name), uint(scanned), fmt.Errorf(StrError(err))
 	}
 	return "", 0, fmt.Errorf(StrError(err))
 }
@@ -218,33 +242,16 @@ func (e *Engine) ScanFileCb(path string, opts uint, context interface{}) (string
 
 	// find where to store the context in our callback map. we do _not_ pass the context to
 	// C directly because aggressive garbage collection will move it around
-	callbacks.Lock()
-	// find the next available empty spot. uintptr overflow should be ok -- we don't expect
-	// to have Max(uintptr) files scanned at the same time
-	for _, ok := callbacks.cb[callbacks.nextId]; ok; callbacks.nextId++ {
-	}
-	cbidx := callbacks.nextId
-	callbacks.cb[cbidx] = context
-	callbacks.nextId++
-	callbacks.Unlock()
-
+	cctx := setContext(context)
 	// cleanup
-	defer func() {
-		callbacks.Lock()
-		delete(callbacks.cb, cbidx)
-		callbacks.Unlock()
-	}()
+	defer deleteContext(cctx)
 
-	err := ErrorCode(C.cl_scanfile_callback(cpath, &name, &scanned, (*C.struct_cl_engine)(e), C.uint(opts), unsafe.Pointer(cbidx)))
+	err := ErrorCode(C.cl_scanfile_callback(cpath, &name, &scanned, (*C.struct_cl_engine)(e), C.uint(opts), cctx))
 	if err == Success {
 		return "", 0, nil
 	}
 	if err == Virus {
-		if opts&ScanAllmatches > 0 {
-			return C.GoString(C.fixup_clam_virus(&name)), uint(scanned), fmt.Errorf(StrError(err))
-		} else {
-			return C.GoString(name), uint(scanned), fmt.Errorf(StrError(err))
-		}
+		return C.GoString(name), uint(scanned), fmt.Errorf(StrError(err))
 	}
 	return "", 0, fmt.Errorf(StrError(err))
 }
@@ -266,24 +273,11 @@ func (e *Engine) ScanMapCb(fmap *Fmap, opts uint, context interface{}) (string, 
 
 	// find where to store the context in our callback map. we do _not_ pass the context to
 	// C directly because aggressive garbage collection will move it around
-	callbacks.Lock()
-	// find the next available empty spot. uintptr overflow should be ok -- we don't expect
-	// to have Max(uintptr) files scanned at the same time
-	for _, ok := callbacks.cb[callbacks.nextId]; ok; callbacks.nextId++ {
-	}
-	cbidx := callbacks.nextId
-	callbacks.cb[cbidx] = context
-	callbacks.nextId++
-	callbacks.Unlock()
-
+	cctx := setContext(context)
 	// cleanup
-	defer func() {
-		callbacks.Lock()
-		delete(callbacks.cb, cbidx)
-		callbacks.Unlock()
-	}()
+	defer deleteContext(cctx)
 
-	err := ErrorCode(C.cl_scanmap_callback((*C.cl_fmap_t)(fmap), &name, &scanned, (*C.struct_cl_engine)(e), C.uint(opts), unsafe.Pointer(cbidx)))
+	err := ErrorCode(C.cl_scanmap_callback((*C.cl_fmap_t)(fmap), &name, &scanned, (*C.struct_cl_engine)(e), C.uint(opts), unsafe.Pointer(cctx)))
 	if err == Success {
 		return "", 0, nil
 	}
@@ -293,7 +287,7 @@ func (e *Engine) ScanMapCb(fmap *Fmap, opts uint, context interface{}) (string, 
 	return "", 0, fmt.Errorf(StrError(err))
 }
 
-// LoadDB loads a single database file or all databases depending on whether its first argument
+// Load loads a single database file or all databases depending on whether its first argument
 // (path) points to a file or a directory. A number of loaded signatures will be added to signo
 // (the virus counter should be initialized to zero initially)
 func (e *Engine) Load(path string, dbopts uint) (uint, error) {
