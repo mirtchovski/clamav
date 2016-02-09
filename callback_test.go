@@ -15,25 +15,25 @@ func TestFmapOpenMemory(t *testing.T) {
 	if fmap == nil {
 		t.Fatalf("FmapOpenMemory failed")
 	}
-	
+
 	fmap.Close()
 }
 
 func TestScanMap(t *testing.T) {
 	eicarvirname := "Eicar-Test-Signature"
-	
+
 	eng, err := testInitAll()
 	if err != nil {
 		t.Fatalf("testInitAll: %v")
 	}
 	defer eng.Free()
-	
+
 	fmap := FmapOpenMemory(eicar)
 	if fmap == nil {
 		t.Fatalf("FmapOpenMemory failed")
 	}
 	defer fmap.Close()
-	
+
 	virus, scan, err := eng.ScanMap(fmap, ScanStdopt, nil)
 	if err != nil {
 		if virus != "" {
