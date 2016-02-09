@@ -34,7 +34,7 @@ func TestScanMap(t *testing.T) {
 	}
 	defer fmap.Close()
 
-	virus, scan, err := eng.ScanMap(fmap, ScanStdopt, nil)
+	virus, scan, err := eng.ScanMapCb(fmap, ScanStdopt, nil)
 	if err != nil {
 		if virus != "" {
 			if virus != eicarvirname {
