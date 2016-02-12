@@ -183,7 +183,7 @@ func main() {
 
 	args := flag.Args()
 	if len(args) == 0 && !*testmap {
-		fmt.Fprintln(os.Stderr, "error: missing path\n")
+		fmt.Fprintln(os.Stderr, "error: missing path")
 		usage()
 	}
 

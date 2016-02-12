@@ -215,14 +215,14 @@ func TestGetSetString(tt *testing.T) {
 		for _, v := range StringTests {
 			err := eng.SetString(t, v.set)
 			if err != nil {
-				tt.Errorf("SetString: field: %d (%d) %v", t, v.set, err)
+				tt.Errorf("SetString: field: %d (%s) %v", t, v.set, err)
 			}
 			n, err := eng.GetString(t)
 			if err != nil {
-				tt.Errorf("GetString: (%d) %d: %v", t, v.set, err)
+				tt.Errorf("GetString: %d (%s): %v", t, v.set, err)
 			}
 			if v.match && n != v.want {
-				tt.Errorf("GetString: (%d) %d want %d", t, n, v.want)
+				tt.Errorf("GetString: %d %s (want %s)", t, n, v.want)
 			}
 		}
 	}
@@ -235,14 +235,14 @@ var StringSizeTests = []int{
 func test1(tt *testing.T, eng *Engine, fld EngineField, s string) {
 	err := eng.SetString(fld, s)
 	if err != nil {
-		tt.Errorf("SetString: field: %d (%d) %v", fld, s, err)
+		tt.Errorf("SetString: field: %d (%s) %v", fld, s, err)
 	}
 	ns, err := eng.GetString(fld)
 	if err != nil {
-		tt.Errorf("GetString: (%d) %d: %v", fld, ns, err)
+		tt.Errorf("GetString: %d (%s): %v", fld, ns, err)
 	}
 	if s != ns {
-		tt.Errorf("GetString: (%d) %d want %d", fld, s, ns)
+		tt.Errorf("GetString: %d %s (want %s)", fld, s, ns)
 	}
 }
 
@@ -398,7 +398,7 @@ func benchmarkScanFile(b *testing.B, path string) {
 	b.StopTimer()
 	eng, err := testInitAll()
 	if err != nil {
-		b.Fatalf("testInitAll: %v")
+		b.Fatalf("testInitAll: %v", err)
 	}
 	defer eng.Free()
 	b.StartTimer()
