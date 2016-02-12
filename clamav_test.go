@@ -390,7 +390,7 @@ func TestScan(t *testing.T) {
 		}
 	}
 	if !found {
-		fmt.Printf("No virus files found. Please copy the files from ClamAV's test/ directory into testdata/")
+		fmt.Println("No virus files found. Please copy the files from ClamAV's test/ directory into testdata/")
 	}
 }
 
