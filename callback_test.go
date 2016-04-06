@@ -19,12 +19,12 @@ func TestFmapOpenMemory(t *testing.T) {
 	fmap.Close()
 }
 
-func TestScanMap(t *testing.T) {
+func TestScanMapCb(t *testing.T) {
 	eicarvirname := "Eicar-Test-Signature"
 
 	eng, err := testInitAll()
 	if err != nil {
-		t.Fatalf("testInitAll: %v")
+		t.Fatalf("testInitAll: %v", err)
 	}
 	defer eng.Free()
 

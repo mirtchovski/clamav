@@ -219,10 +219,10 @@ func TestGetSetString(tt *testing.T) {
 			}
 			n, err := eng.GetString(t)
 			if err != nil {
-				tt.Errorf("GetString: %d (%s): %v", t, v.set, err)
+				tt.Errorf("GetString: (%d) %v: %v", t, v.set, err)
 			}
 			if v.match && n != v.want {
-				tt.Errorf("GetString: %d %s (want %s)", t, n, v.want)
+				tt.Errorf("GetString: (%d) %v want %d", t, n, v.want)
 			}
 		}
 	}
@@ -239,10 +239,10 @@ func test1(tt *testing.T, eng *Engine, fld EngineField, s string) {
 	}
 	ns, err := eng.GetString(fld)
 	if err != nil {
-		tt.Errorf("GetString: %d (%s): %v", fld, ns, err)
+		tt.Errorf("GetString: (%d) %s: %v", fld, ns, err)
 	}
 	if s != ns {
-		tt.Errorf("GetString: %d %s (want %s)", fld, s, ns)
+		tt.Errorf("GetString: (%d) %s want %d", fld, s, ns)
 	}
 }
 
