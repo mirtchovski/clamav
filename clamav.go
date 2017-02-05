@@ -2,7 +2,7 @@
 // Use of this source code is governed by a
 // license that can be found in the LICENSE file.
 
-// Clamav is a wrapper around libclamav.
+// Package clamav is a wrapper around libclamav.
 // For more information about libclamav see http://www.clamav.net
 package clamav
 
@@ -28,7 +28,7 @@ var initOnce sync.Once
 // file scan
 type Callback struct {
 	sync.Mutex
-	nextId uintptr
+	nextID uintptr
 	cb     map[unsafe.Pointer]interface{}
 }
 
@@ -156,10 +156,12 @@ func (e *Engine) GetString(field EngineField) (string, error) {
 	return str, nil
 }
 
+// CopySettings returns a copy of the current engine settings
 func (e *Engine) CopySettings() *Settings {
 	return (*Settings)(C.cl_engine_settings_copy((*C.struct_cl_engine)(e)))
 }
 
+// ApplySettings applies the given settings to the engine
 func (e *Engine) ApplySettings(s *Settings) error {
 	err := ErrorCode(C.cl_engine_settings_apply((*C.struct_cl_engine)(e), (*C.struct_cl_settings)(s)))
 	if err != Success {
@@ -168,6 +170,7 @@ func (e *Engine) ApplySettings(s *Settings) error {
 	return nil
 }
 
+// FreeSettings frees the given settings
 func FreeSettings(s *Settings) error {
 	err := ErrorCode(C.cl_engine_settings_free((*C.struct_cl_settings)(s)))
 	if err != Success {
@@ -176,6 +179,7 @@ func FreeSettings(s *Settings) error {
 	return nil
 }
 
+// Compile makes the engine functional
 func (e *Engine) Compile() error {
 	err := ErrorCode(C.cl_engine_compile((*C.struct_cl_engine)(e)))
 	if err != Success {
@@ -183,14 +187,8 @@ func (e *Engine) Compile() error {
 	}
 	return nil
 }
-func (e *Engine) Addref() error {
-	err := ErrorCode(C.cl_engine_compile((*C.struct_cl_engine)(e)))
-	if err != Success {
-		return fmt.Errorf("%v", StrError(err))
-	}
-	return nil
-}
 
+// ScanDesc scans a file descriptor with the provided engine
 func (e *Engine) ScanDesc(desc int, opts uint) (string, uint, error) {
 	var name *C.char
 	var scanned C.ulong
@@ -328,6 +326,7 @@ func StatChkDir(stat *Stat) bool {
 	return false
 }
 
+// StatFree releases the engine stat
 func StatFree(stat *Stat) error {
 	err := ErrorCode(C.cl_statfree((*C.struct_cl_stat)(stat)))
 	if err != Success {
@@ -366,15 +365,17 @@ func Debug() {
 	C.cl_debug()
 }
 
+// Retflevel returns the engine database minimum level
 func Retflevel() uint {
 	return uint(C.cl_retflevel())
 }
 
+// Retver returns the engine version
 func Retver() string {
 	return C.GoString(C.cl_retver())
 }
 
-// Strerror converts LibClam error codes to human readable format
+// StrError converts LibClam error codes to human readable format
 func StrError(errno ErrorCode) string {
 	return errno.String()
 }

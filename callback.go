@@ -1,6 +1,9 @@
 // Copyright 2013 the Go ClamAV authors
 // Use of this source code is governed by a
 // license that can be found in the LICENSE file.
+
+// Package clamav is a wrapper around libclamav.
+// For more information about libclamav see http://www.clamav.net
 package clamav
 
 /*
@@ -26,8 +29,8 @@ var callbackFuncs = map[string]interface{}{
 	"meta":     nil,
 }
 
-//export precache_cb
-func precache_cb(fd C.int, ftype *C.char, context unsafe.Pointer) C.cl_error_t {
+//export precacheCallback
+func precacheCallback(fd C.int, ftype *C.char, context unsafe.Pointer) C.cl_error_t {
 	fn := callbackFuncs["precache"]
 	if fn == nil {
 		return Clean
@@ -36,14 +39,16 @@ func precache_cb(fd C.int, ftype *C.char, context unsafe.Pointer) C.cl_error_t {
 	return C.cl_error_t(fn.(CallbackPreCache)(int(fd), C.GoString(ftype), ctx))
 }
 
+// SetPreCacheCallback sets the callback function to use with ClamAV's
+// pre_cache callback
 func (e *Engine) SetPreCacheCallback(cb CallbackPreCache) {
 	callbackFuncs["precache"] = cb
 
 	C.cl_engine_set_clcb_pre_cache((*C.struct_cl_engine)(unsafe.Pointer(e)), (C.clcb_pre_cache)(unsafe.Pointer(C.precache_cgo)))
 }
 
-//export prescan_cb
-func prescan_cb(fd C.int, ftype *C.char, context unsafe.Pointer) C.cl_error_t {
+//export prescanCallback
+func prescanCallback(fd C.int, ftype *C.char, context unsafe.Pointer) C.cl_error_t {
 	v := callbackFuncs["prescan"]
 	if v == nil {
 		return Clean
@@ -53,14 +58,14 @@ func prescan_cb(fd C.int, ftype *C.char, context unsafe.Pointer) C.cl_error_t {
 }
 
 // SetPreScanCallback will set the callback function ClamAV will call before a
-// scan commences to cb
+// scan commences to the specified function
 func (e *Engine) SetPreScanCallback(cb CallbackPreScan) {
 	callbackFuncs["prescan"] = cb
 	C.cl_engine_set_clcb_pre_scan((*C.struct_cl_engine)(unsafe.Pointer(e)), C.clcb_pre_scan(unsafe.Pointer(C.prescan_cgo)))
 }
 
-//export postscan_cb
-func postscan_cb(fd, result C.int, virname *C.char, context unsafe.Pointer) C.cl_error_t {
+//export postscanCallback
+func postscanCallback(fd, result C.int, virname *C.char, context unsafe.Pointer) C.cl_error_t {
 	v := callbackFuncs["postscan"]
 	if v == nil {
 		return Clean
@@ -79,10 +84,10 @@ func (e *Engine) SetPostScanCallback(cb CallbackPostScan) {
 // PreadHandleCallbacks stores a pread function associated with each handle passed
 // through FmapOpenHandle. The callbacks are used to read from the file/memory location
 // associated with the handle
-var preadHandleCallbacks map[*interface{}]CallbackPread = map[*interface{}]CallbackPread{}
+var preadHandleCallbacks = map[*interface{}]CallbackPread{}
 
-//export pread_cb
-func pread_cb(handle unsafe.Pointer, buf unsafe.Pointer, count C.size_t, offset C.off_t) C.off_t {
+//export preadCallback
+func preadCallback(handle unsafe.Pointer, buf unsafe.Pointer, count C.size_t, offset C.off_t) C.off_t {
 	v, ok := preadHandleCallbacks[(*interface{})(handle)]
 	if !ok {
 		return -1 // couldn't find callback
@@ -117,8 +122,8 @@ func SetMsgCallback(cb CallbackMsg) {
 	C.cl_set_clcb_msg((C.clcb_msg)(unsafe.Pointer(&msgcb)))
 }
 
-//export hash_cb
-func hash_cb(fd C.int, size C.ulonglong, md5 *C.uchar, virname *C.char, context unsafe.Pointer) {
+//export hashCallback
+func hashCallback(fd C.int, size C.ulonglong, md5 *C.uchar, virname *C.char, context unsafe.Pointer) {
 	v := callbackFuncs["hash"]
 	if v == nil {
 		return
@@ -135,22 +140,20 @@ func (e *Engine) SetHashCallback(cb CallbackHash) {
 	C.cl_engine_set_clcb_hash((*C.struct_cl_engine)(unsafe.Pointer(e)), (C.clcb_hash)(unsafe.Pointer(C.hash_cgo)))
 }
 
-/* FmapOpenHandle opens a file map for scanning custom data accessed by a handle and pread (lseek +
- * read)-like interface, for example a WIN32 HANDLE.
- * By default fmap will use aging to discard old data, unless you tell it not
- * to via the parameter "age". The handle will be passed to the callback each time.
- *
- * FmapOpenHandle is currently unumplemented
- */
+// FmapOpenHandle opens a file map for scanning custom data accessed by a handle and pread (lseek +
+// read)-like interface, for example a WIN32 HANDLE.
+// By default fmap will use aging to discard old data, unless you tell it not
+// to via the parameter "age". The handle will be passed to the callback each time.
+//
+// FmapOpenHandle is currently unumplemented
 func FmapOpenHandle(handle *interface{}, offset int64, length uint32, cb CallbackPread, age bool) *Fmap {
 	return nil
 }
 
-/* FmapOpenMemory opens a map for scanning custom data, where the data is already in memory,
- * either in the form of a buffer, a memory mapped file, etc.
- * Note that the memory [start, start+len) must be the _entire_ file,
- * you can't give it parts of a file and expect detection to work.
- */
+// FmapOpenMemory opens a map for scanning custom data, where the data is already in memory,
+// either in the form of a buffer, a memory mapped file, etc.
+// Note that the memory [start, start+len) must be the _entire_ file,
+// you can't give it parts of a file and expect detection to work.
 func FmapOpenMemory(buf []byte) *Fmap {
 	if len(buf) == 0 {
 		return nil
@@ -158,8 +161,8 @@ func FmapOpenMemory(buf []byte) *Fmap {
 	return (*Fmap)(C.cl_fmap_open_memory(unsafe.Pointer(&buf[0]), C.size_t(len(buf))))
 }
 
-/* Close resources associated with the map, you should release any resources
- * you hold only after (handles, maps) calling this function */
+// Close resources associated with the map, you should release any resources
+// you hold only after (handles, maps) calling this function */
 func (f *Fmap) Close() {
 	C.cl_fmap_close((*C.struct_cl_fmap)(f))
 }

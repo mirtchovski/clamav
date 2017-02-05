@@ -117,7 +117,7 @@ func walker(path string, in chan string) {
 	in <- path
 }
 
-func PreCacheCb(fd int, ftype string, context interface{}) clamav.ErrorCode {
+func preCacheCb(fd int, ftype string, context interface{}) clamav.ErrorCode {
 	if *debug {
 		log.Printf("pre cache callback for %s: fd=%d ftype=%s", context, fd, ftype)
 	}
@@ -125,7 +125,7 @@ func PreCacheCb(fd int, ftype string, context interface{}) clamav.ErrorCode {
 	return clamav.Clean
 }
 
-func PreScanCb(fd int, ftype string, context interface{}) clamav.ErrorCode {
+func preScanCb(fd int, ftype string, context interface{}) clamav.ErrorCode {
 	if *debug {
 		log.Printf("pre scan callback for %s: fd=%d ftype=%s", context, fd, ftype)
 	}
@@ -133,7 +133,7 @@ func PreScanCb(fd int, ftype string, context interface{}) clamav.ErrorCode {
 	return clamav.Clean
 }
 
-func PostScanCb(fd int, result clamav.ErrorCode, virname string, context interface{}) clamav.ErrorCode {
+func postScanCb(fd int, result clamav.ErrorCode, virname string, context interface{}) clamav.ErrorCode {
 	if *debug {
 		log.Printf("post scan callback for %s: fd=%d result=%s virus=%s", context, fd, clamav.StrError(result), virname)
 	}
@@ -141,7 +141,7 @@ func PostScanCb(fd int, result clamav.ErrorCode, virname string, context interfa
 	return clamav.Clean
 }
 
-func HashCb(fd int, size uint64, md5 []byte, virname string, context interface{}) {
+func hashCb(fd int, size uint64, md5 []byte, virname string, context interface{}) {
 	if *debug {
 		log.Printf("hash callback for %s: fd=%d size=%d md5=%s virus=%s", context, fd, size, md5, virname)
 	}
@@ -160,10 +160,10 @@ func initClamAV() *clamav.Engine {
 		log.Printf("loaded %d signatures", sigs)
 	}
 
-	engine.SetPreCacheCallback(PreCacheCb)
-	engine.SetPreScanCallback(PreScanCb)
-	engine.SetPostScanCallback(PostScanCb)
-	engine.SetHashCallback(HashCb)
+	engine.SetPreCacheCallback(preCacheCb)
+	engine.SetPreScanCallback(preScanCb)
+	engine.SetPostScanCallback(postScanCb)
+	engine.SetHashCallback(hashCb)
 
 	engine.Compile()
 

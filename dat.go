@@ -12,12 +12,14 @@ package clamav
 */
 import "C"
 
+// Engine is a ClamAV virus scanning engine
 type Engine C.struct_cl_engine
+
+// Settings models the settings applied to a ClamAV engine
 type Settings C.struct_cl_settings
 
+// ErrorCode models ClamAV errors
 type ErrorCode C.cl_error_t
-
-const CountPrecision = C.CL_COUNT_PRECISION
 
 // return codes
 const (
@@ -58,8 +60,10 @@ const (
 	ELast                       = C.CL_ELAST_ERROR // no error codes below this line please
 )
 
+// EngineField selects a particular engine settings field
 type EngineField C.enum_cl_engine_field
 
+// Engine settings
 const (
 	EngineMaxScansize      EngineField = C.CL_ENGINE_MAX_SCANSIZE      // uint64_t
 	EngineMaxFilesize                  = C.CL_ENGINE_MAX_FILESIZE      // uint64_t
@@ -81,16 +85,20 @@ const (
 	EngineBytecodeMode                 = C.CL_ENGINE_BYTECODE_MODE     // uint32_t
 )
 
+// BytecodeSecurity models security settings for the bytecode scanner
 type BytecodeSecurity C.enum_bytecode_security
 
+// Bytecode security settings
 const (
 	BytecodeTrustAll     BytecodeSecurity = C.CL_BYTECODE_TRUST_ALL     // obsolete
 	BytecodeTrustSigned                   = C.CL_BYTECODE_TRUST_SIGNED  // default
 	BytecodeTrustNothing                  = C.CL_BYTECODE_TRUST_NOTHING // paranoid setting
 )
 
+// BytecodeMode selects mode for the bytecode scanner
 type BytecodeMode C.enum_bytecode_mode
 
+// Bytecode mode settings
 const (
 	BytecodeModeAuto        BytecodeMode = C.CL_BYTECODE_MODE_AUTO        // JIT if possible, fallback to interpreter
 	BytecodeModeJit                      = C.CL_BYTECODE_MODE_JIT         // force JIT
@@ -99,7 +107,7 @@ const (
 	BytecodeModeOff                      = C.CL_BYTECODE_MODE_OFF         // for query only, not settable
 )
 
-// db options
+// Virus signature database options
 const (
 	DbPhishing         = 0x2
 	DbPhishingUrls     = 0x8
@@ -120,6 +128,7 @@ const (
 	DbStdopt = (DbPhishing | DbPhishingUrls | DbBytecode)
 )
 
+// Scanner options
 const (
 	// scan options
 	ScanRaw                   = 0x0
@@ -127,7 +136,7 @@ const (
 	ScanMail                  = 0x2
 	ScanOle2                  = 0x4
 	ScanBlockencrypted        = 0x8
-	ScanHtml                  = 0x10
+	ScanHTML                  = 0x10
 	ScanPe                    = 0x20
 	ScanBlockbroken           = 0x40
 	ScanMailurl               = 0x80  // ignored
@@ -150,16 +159,17 @@ const (
 	ScanCollectPerformanceInfo = 0x40000000
 
 	// recommended scan settings
-	ScanStdopt = (ScanArchive | ScanMail | ScanOle2 | ScanPdf | ScanHtml | ScanPe | ScanAlgorithmic | ScanElf | ScanSwf)
+	ScanStdopt = (ScanArchive | ScanMail | ScanOle2 | ScanPdf | ScanHTML | ScanPe | ScanAlgorithmic | ScanElf | ScanSwf)
 )
 
-// cl_countsigs options
+// Signature count options
 const (
 	CountSigsOfficial = iota
 	CountSigsUnofficial
 	CountSigsAll = (CountSigsOfficial | CountSigsUnofficial)
 )
 
+// Engine options
 const (
 	// engine options
 	EngineOptionsNone = iota
@@ -168,8 +178,8 @@ const (
 	EngineOptionsDisablePEStats
 )
 
+// Engine fields
 const (
-	// engine fields
 	MaxScansize           = iota // uint64
 	MaxFilesize                  // uint64
 	MaxRecursion                 // uint32
@@ -202,10 +212,16 @@ const (
 
 )
 
+// Stat holds engine statistics
 type Stat C.struct_cl_stat
+
+// Cvd models an engine virus database
 type Cvd C.struct_cl_cvd
+
+// Fmap models in-memory files
 type Fmap C.cl_fmap_t
 
+// InitDefault has default initialization settings
 const InitDefault = 0
 
 // CallbackPreCache is called for each processed file (both the entry level - AKA 'outer' - file and
@@ -270,16 +286,17 @@ type CallbackPostScan func(fd int, result ErrorCode, virname string, context int
 //          It is the implementor's responsibility to guarantee consistency.
 // type CallbackSigLoad C.clcb_sigload
 
-// Message severity for CallbackMsg
+// Msg selects the logging severity for an engine
 type Msg C.enum_cl_msg
 
+// Logging severity
 const (
 	MsgInfoVerbose Msg = C.CL_MSG_INFO_VERBOSE
 	MsgWarn            = C.CL_MSG_WARN
 	NsgError           = C.CL_MSG_ERROR
 )
 
-// CallbackMsg, if set, will be called instead of logging to stderr.
+// CallbackMsg will be called instead of logging to stderr.
 // Messages of lower severity than specified are logged as usual.
 // This must be called before going multithreaded.
 // Callable before cl_init, if you want to log messages from cl_init() itself.
